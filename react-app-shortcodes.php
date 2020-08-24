@@ -3,10 +3,11 @@
 /**
 
  * @wordpress-plugin
- * Plugin Name:       React App Shortcodes
- * Plugin URI:        https://www.westhofen.me
- * Version:           1.0.0
- * Author:            Magnus Westhofen
+ * Plugin Name:         React App Shortcodes
+ * Plugin URI:          https://www.westhofen.me
+ * Version:             1.0.0
+ * Author:              Magnus Westhofen
+ * Text Domain:         react-app-shortcodes
 
  */
 
