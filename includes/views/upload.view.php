@@ -15,8 +15,6 @@
     }
     ?>
     <div style="margin-bottom:25px">
-<p><?php echo __('Upload a ZIP of your Creat-Reat App build here. Your previous build will be deleted.', 'react-app-shortcodes');?></p>
-<input type="file" id="react_app_uploader" name="react_app_uploader" value="" size="25" />
-</div>
-
-<?php
+        <p><?php echo __('Upload a ZIP of your Creat-Reat App build here. Your previous build will be deleted.', 'react-app-shortcodes');?></p>
+        <input type="file" id="react_app_uploader" name="react_app_uploader" value="" size="25" />
+    </div>
