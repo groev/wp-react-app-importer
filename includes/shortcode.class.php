@@ -27,6 +27,9 @@ class RAS_Shortcode
     // render_app handles to output of the shortcode.
     private function render_app($id, $stylesheet)
     {
+        if(is_admin()) {
+            return;
+        }
         $name = get_post_meta($id, 'react_app_name', true);
         if (!$name) {
             return;
@@ -34,7 +37,9 @@ class RAS_Shortcode
         $path = WP_CONTENT_DIR.'/uploads/reactapps/'.$name.'/';
         $url = WP_CONTENT_URL.'/uploads/reactapps/'.$name.'/';
         $html = file_get_contents($path.'index.html');
+        libxml_use_internal_errors(true);
         $parsed =  DOMDocument::loadHTML($html); // Using DOMDocument to get all HTML Tags
+        libxml_use_internal_errors(false);
         $divs = $parsed->getElementsByTagName('div'); // getting all divs, one needed
         $scripts = $parsed->getElementsByTagName('script'); // getting all scripts
         $links = $parsed->getElementsByTagName('link'); // getting all links (for styling)
