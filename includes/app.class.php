@@ -113,21 +113,21 @@ class RAS_App
             }
             if (!empty($_FILES['react_app_uploader']['name'])) {
                 $uploadfolder =  WP_CONTENT_DIR . '/uploads/reactapps'; // Determine the server path to upload files
-                $uploadurl = content_url() . '/uploads/reactapps/'; // Determine the absolute url to upload files
-                define('RAS_UPLOADDIR', $uploadfolder);
-                define('RAS_UPLOADURL', $uploadurl);
                 $supported_types = array('application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip');
                 $arr_file_type = wp_check_filetype(basename($_FILES['react_app_uploader']['name']));
                 $uploaded_type = $arr_file_type['type'];
                 if (in_array($uploaded_type, $supported_types)) { // Checking filetype
+                    $saveName = 'app-'.$post_id;
                     $tmpName = $_FILES['react_app_uploader']['tmp_name'];
-                    $folderName = $uploadfolder.'/app-'.$post_id.'-'.time().'/';
+                    $folderName = $uploadfolder.'/'.$saveName.'/';
                     $pathToZip = $folderName.'build.zip';
-                    $publicUrl = $uploadurl.'app-'.$post_id.'-'.time().'/';
+                    if (!file_exists($uploadfolder)) {
+                        mkdir($uploadfolder, 0775);
+                    } // Create upload folder if does not exist.
                     if (!file_exists($folderName)) {
-                        mkdir($folderName);
+                        mkdir($folderName, 0775);
                     } // Create new folder if doesn't exist.
-                    $move = copy($tmpName, $pathToZip); // Move temp files to folder
+                    $move = move_uploaded_file ($tmpName, $pathToZip); // Move temp files to folder
                     if (!$move) {
                         throw new \Exception(__('There was an error uploading your app.', 'react-app-shortcodes'));
                     }
@@ -143,15 +143,13 @@ class RAS_App
                     if ($bOK !== true) {
                         throw new \Exception(__('Could not extract your zip file.', 'react-app-shortcodes'));
                     } // Checking if archive can be extracted.
-
+                    $zip->close();
                     $oldBuild = get_post_meta($post_id, 'react_app_folder', true);
                     if ($oldBuild) {
                         $this->delete_app_files($oldBuild);
                     } // Delete files if new existing.
-                        add_post_meta($post_id, 'react_app_folder', $folderName); // Creating post meta with path
-                        update_post_meta($post_id, 'react_app_folder', $folderName); //Updating post meta with path
-                        add_post_meta($post_id, 'react_app_url', $publicUrl); // .. url
-                        update_post_meta($post_id, 'react_app_url', $publicUrl);  // .. url
+                        add_post_meta($post_id, 'react_app_name', $saveName); // Creating post meta with path
+                        update_post_meta($post_id, 'react_app_name', $saveName); //Updating post meta with path
                         unlink($pathToZip); // Deleting the ZIP File
                 } else {
                     throw new \Exception(__('You did not upload a valid ZIP File.', 'react-app-shortcodes'));
@@ -173,7 +171,7 @@ class RAS_App
             </div>
             <?php
             // show error once, delete it afterwards
-              delete_transient('react_app_errors_'.$id);
+            delete_transient('react_app_errors_'.$id);
         }
         }
     }
@@ -187,9 +185,10 @@ class RAS_App
     }
 
     // Deletes all files in this speficic directory.
-    private function delete_app_files($dir)
+    private function delete_app_files($name)
     {
-        if (is_dir($dir)) {
+        $dir = WP_CONTENT_DIR.'/uploads/reactapps/'.$name.'/';                                                                                                                                                                                                                                                                                                                                                                                                                               
+        if (is_dir($dir) && strpos ( $dir, 'reactapps')) {
             $objects = scandir($dir);
             foreach ($objects as $object) {
                 if ($object != "." && $object != "..") {

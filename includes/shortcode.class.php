@@ -27,11 +27,12 @@ class RAS_Shortcode
     // render_app handles to output of the shortcode.
     private function render_app($id, $stylesheet)
     {
-        $path = get_post_meta($id, 'react_app_folder', true);
-        $url = get_post_meta($id, 'react_app_url', true);
-        if (!$path || !$url) {
+        $name = get_post_meta($id, 'react_app_name', true);
+        if (!$name) {
             return;
         }
+        $path = WP_CONTENT_DIR.'/uploads/reactapps/'.$name.'/';
+        $url = WP_CONTENT_URL.'/uploads/reactapps/'.$name.'/';
         $html = file_get_contents($path.'index.html');
         $parsed =  DOMDocument::loadHTML($html); // Using DOMDocument to get all HTML Tags
         $divs = $parsed->getElementsByTagName('div'); // getting all divs, one needed
@@ -45,7 +46,7 @@ class RAS_Shortcode
             foreach ($divs as $div) {
                 $divId = $div->getAttribute('id');
                 if ($divId) {
-                    echo '<div id="'.$divId.'"></div>';
+                    echo '<div id="'.esc_attr($divId).'"></div>';
                 }
             }
         }
@@ -78,9 +79,9 @@ class RAS_Shortcode
                     $href = $link->getAttribute('href');
                     $fullUrl = rtrim($url, '/').$href;
                     if (!strpos($href, 'http')) {
-                        wp_enqueue_style('react-app-style-'.$s, $fullUrl, array(), "1.0.0", 'all');
+                        wp_enqueue_style('react-app-style-'.$s, esc_url($fullUrl), array(), "1.0.0", 'all');
                     } else {
-                        wp_enqueue_style('react-app-style-'.$s, $href, array(), "1.0.0", 'all');
+                        wp_enqueue_style('react-app-style-'.$s, esc_url($href), array(), "1.0.0", 'all');
                     }
                 }
             }

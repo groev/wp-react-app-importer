@@ -1,10 +1,10 @@
 <?php
     wp_nonce_field('upload_react_app', 'react_uploader_nonce'); // nonce field for validating the action
-    $url = get_post_meta($_GET['post'], 'react_app_url', true); // getting the previous urls/paths;
-    $path = get_post_meta($_GET['post'], 'react_app_folder', true);
+    $name = get_post_meta($_GET['post'], 'react_app_name', true);
+    $url = content_url().'/reactapps/'.$name.'/'; // getting the previous urls/paths;
 
     // check if url and path exists, then display information on the current build.
-    if ($url && $path) {
+    if ($name) { 
         echo '<div style="margin:25px 0">';
         echo '<strong>'.__('Current build files', 'react-app-shortcodes').':</strong><br /> '.$url;
         echo '</div>';
