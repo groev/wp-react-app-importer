@@ -57,8 +57,8 @@ class RAS_Shortcode
                 // if script has source, enque
                 if ($src) {
                     $i++;
-                    $src = str_replace('/static/', $url.'static/', $src);
-                    wp_enqueue_script('react-script-'.$i, $src, array(), "1.0.0", true);
+                    $fullUrl = rtrim($url, '/').$src;
+                    wp_enqueue_script('react-script-'.$i, $fullUrl, array(), "1.0.0", true);
                 }
                 // if script has content, echo
                 if ($content) {
@@ -70,12 +70,18 @@ class RAS_Shortcode
             }
         }
         if ($links && $stylesheet !== "off") {
+            $s = 0;
             foreach ($links as $link) {
                 // if link has rel, enque, footer position is potentially to be optimized.
                 if ($link->getAttribute('rel') === "stylesheet") {
+                    $s++;
                     $href = $link->getAttribute('href');
-                    $href = str_replace('/static/', $url.'static/', $href);
-                    wp_enqueue_style('react-app-style', $href, array(), "1.0.0", 'all');
+                    $fullUrl = rtrim($url, '/').$href;
+                    if (!strpos($href, 'http')) {
+                        wp_enqueue_style('react-app-style-'.$s, $fullUrl, array(), "1.0.0", 'all');
+                    } else {
+                        wp_enqueue_style('react-app-style-'.$s, $href, array(), "1.0.0", 'all');
+                    }
                 }
             }
         }
