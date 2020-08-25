@@ -70,7 +70,16 @@ class RAS_App
             'exclude_from_search' => false,
             'show_in_rest' => true,
             'publicly_queryable' => false,
-            'capability_type' => 'post',
+            'capabilities' => array(
+                'edit_post'          => 'update_core',
+                'read_post'          => 'update_core',
+                'delete_post'        => 'update_core',
+                'edit_posts'         => 'update_core',
+                'edit_others_posts'  => 'update_core',
+                'delete_posts'       => 'update_core',
+                'publish_posts'      => 'update_core',
+                'read_private_posts' => 'update_core'
+            ),
         );
         register_post_type('react_app', $args);
     }
@@ -88,77 +97,64 @@ class RAS_App
     // upload_on_save hooks into the save_post action and uploads and extracts the zip file.
     public function upload_on_save($post_id, $post)
     {
-        if ($post->post_status !== 'publish') {
+        if ($post->post_status !== 'publish' || $post->post_type !== 'react_app') {
             return $post_id;
         }
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return $post_id;
+        }
+
         try {
-            $uploadfolder =  WP_CONTENT_DIR . '/uploads/reactapps'; // Determine the server path to upload files
-            $uploadurl = content_url() . '/uploads/reactapps/'; // Determine the absolute url to upload files
-            define('RAS_UPLOADDIR', $uploadfolder);
-            define('RAS_UPLOADURL', $uploadurl);
-            if (!file_exists($uploadfolder)) {
-                mkdir($uploadfolder, 755);
-            }
-
-
             if (!wp_verify_nonce($_POST['react_uploader_nonce'], 'upload_react_app')) {
                 throw new \Exception(__('There was an nonce error uploading your File.', 'react-app-shortcodes'));
             }
-
-           
-            if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-                return $post_id;
+            if (!current_user_can('update_core')) {
+                throw new \Exception(__('You dont have permissions for uploading a file.', 'react-app-shortcodes'));
             }
+            if (!empty($_FILES['react_app_uploader']['name'])) {
+                $uploadfolder =  WP_CONTENT_DIR . '/uploads/reactapps'; // Determine the server path to upload files
+                $uploadurl = content_url() . '/uploads/reactapps/'; // Determine the absolute url to upload files
+                define('RAS_UPLOADDIR', $uploadfolder);
+                define('RAS_UPLOADURL', $uploadurl);
+                $supported_types = array('application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip');
+                $arr_file_type = wp_check_filetype(basename($_FILES['react_app_uploader']['name']));
+                $uploaded_type = $arr_file_type['type'];
+                if (in_array($uploaded_type, $supported_types)) { // Checking filetype
+                    $tmpName = $_FILES['react_app_uploader']['tmp_name'];
+                    $folderName = $uploadfolder.'/app-'.$post_id.'-'.time().'/';
+                    $pathToZip = $folderName.'build.zip';
+                    $publicUrl = $uploadurl.'app-'.$post_id.'-'.time().'/';
+                    if (!file_exists($folderName)) {
+                        mkdir($folderName);
+                    } // Create new folder if doesn't exist.
+                    $move = copy($tmpName, $pathToZip); // Move temp files to folder
+                    if (!$move) {
+                        throw new \Exception(__('There was an error uploading your app.', 'react-app-shortcodes'));
+                    }
+                    $zip = new ZipArchive();
+                    $bOK = $zip->open($pathToZip);
+                    if (!$zip->locateName('index.html')) {
+                        throw new \Exception(__('The Archive you have uploaded does not seem to be a valid Create React App archive.', 'react-app-shortcodes'));
+                    } // Checking if archive has an index.html
+                    if ($bOK !== true) {
+                        throw new \Exception(__('Could not extract your zip file.', 'react-app-shortcodes'));
+                    } // Checking if archive can be extracted.
+                    $bOK = $zip->extractTo($folderName);
+                    if ($bOK !== true) {
+                        throw new \Exception(__('Could not extract your zip file.', 'react-app-shortcodes'));
+                    } // Checking if archive can be extracted.
 
-            if ('react_app' == $_POST['post_type']) {
-                if (!current_user_can('edit_page', $post_id)) {
-                    // Check correct permissions
-                    throw new \Exception(__('You dont have permissions for uploading a file.', 'react-app-shortcodes'));
+                    $oldBuild = get_post_meta($post_id, 'react_app_folder', true);
+                    if ($oldBuild) {
+                        $this->delete_app_files($oldBuild);
+                    } // Delete files if new existing.
+                        add_post_meta($post_id, 'react_app_folder', $folderName); // Creating post meta with path
+                        update_post_meta($post_id, 'react_app_folder', $folderName); //Updating post meta with path
+                        add_post_meta($post_id, 'react_app_url', $publicUrl); // .. url
+                        update_post_meta($post_id, 'react_app_url', $publicUrl);  // .. url
+                        unlink($pathToZip); // Deleting the ZIP File
                 } else {
-                    if (!current_user_can('edit_page', $post_id)) {
-                        // Check correct permissions
-                        throw new \Exception(__('You dont have permissions for uploading a file.', 'react-app-shortcodes'));
-                    }
-                }
-                if (!empty($_FILES['react_app_uploader']['name'])) {
-                    $supported_types = array('application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip');
-                    $arr_file_type = wp_check_filetype(basename($_FILES['react_app_uploader']['name']));
-                    $uploaded_type = $arr_file_type['type'];
-                    if (in_array($uploaded_type, $supported_types)) { // Checking filetype
-                        $filename = $_FILES['react_app_uploader']['tmp_name'];
-                        $newFolder = $uploadfolder.'/app-'.$post_id.'-'.time().'/';
-                        $newName = $newFolder.'build.zip';
-                        $newUrl = $uploadurl.'app-'.$post_id.'-'.time().'/';
-                        if (!file_exists($newFolder)) {
-                            mkdir($newFolder);
-                        } // Create new folder if doesn't exist.
-                        $move = copy($filename, $newName); // Move temp files to folder
-                        $zip = new ZipArchive();
-                        $bOK = $zip->open($newName);
-                        if (!$zip->locateName('index.html')) {
-                            throw new \Exception(__('The Archive you have uploaded does not seem to be a valid Create React App archive.', 'react-app-shortcodes'));
-                        } // Checking if archive has an index.html
-                        if ($bOK !== true) {
-                            throw new \Exception(__('Could not extract your zip file.', 'react-app-shortcodes'));
-                        } // Checking if archive can be extracted.
-                        $bOK = $zip->extractTo($newFolder);
-                        if ($bOK !== true) {
-                            throw new \Exception(__('Could not extract your zip file.', 'react-app-shortcodes'));
-                        } // Checking if archive can be extracted.
-
-                        $oldPath = get_post_meta($post_id, 'react_app_folder', true);
-                        if ($oldPath) {
-                            $this->delete_app_files($oldPath);
-                        } // Delete files if new existing.
-                        add_post_meta($post_id, 'react_app_folder', $newFolder); // Creating post meta with path
-                        update_post_meta($post_id, 'react_app_folder', $newFolder); //Updating post meta with path
-                        add_post_meta($post_id, 'react_app_url', $newUrl); // .. url
-                        update_post_meta($post_id, 'react_app_url', $newUrl);  // .. url
-
-                        unlink($newName); // Deleting the ZIP File
-                    } else {
-                        throw new \Exception(__('You did not upload a valid ZIP File.', 'react-app-shortcodes'));
-                    }
+                    throw new \Exception(__('You did not upload a valid ZIP File.', 'react-app-shortcodes'));
                 }
             }
         } catch (Exception $e) {
@@ -169,12 +165,14 @@ class RAS_App
 
     public function render_admin_error()
     {
+        // show error if the transient exists
         if (isset($_GET['post'])) {
             if (get_transient('react_app_errors_'.$_GET['post'])) {?>
              <div class="error">
                 <p><?php echo get_transient('react_app_errors_'.$_GET['post']); ?></p>
             </div>
             <?php
+            // show error once, delete it afterwards
               delete_transient('react_app_errors_'.$id);
         }
         }
@@ -207,6 +205,7 @@ class RAS_App
         }
     }
 
+    // add the shortcode column to the admin view.
     public function add_admin_column($columns)
     {
         $columns = array(
@@ -216,7 +215,7 @@ class RAS_App
         );
         return $columns;
     }
-
+    // fill the shortcode with a copyable input
     public function fill_admin_column($column, $post_id)
     {
         if ($column === "shortcode") {

@@ -1,7 +1,9 @@
 <?php
-    wp_nonce_field('upload_react_app', 'react_uploader_nonce');
-    $url = get_post_meta($_GET['post'], 'react_app_url', true);
+    wp_nonce_field('upload_react_app', 'react_uploader_nonce'); // nonce field for validating the action
+    $url = get_post_meta($_GET['post'], 'react_app_url', true); // getting the previous urls/paths;
     $path = get_post_meta($_GET['post'], 'react_app_folder', true);
+
+    // check if url and path exists, then display information on the current build.
     if ($url && $path) {
         echo '<div style="margin:25px 0">';
         echo '<strong>'.__('Current build files', 'react-app-shortcodes').':</strong><br /> '.$url;
@@ -13,6 +15,8 @@
         echo '</div>';
         echo '<hr />';
     }
+
+    // Start rendering the input field for uploading.
     ?>
     <div style="margin-bottom:25px">
         <p><?php echo __('Upload a ZIP of your Creat-Reat App build here. Your previous build will be deleted.', 'react-app-shortcodes');?></p>
