@@ -12,7 +12,7 @@ class WRAI_App
     public function __construct()
     {
         add_action('init', array($this, 'register_posttype'));
-        add_action('add_meta_boxes', array($this, 'register_upload_box'));
+        add_action('add_meta_boxes', array($this, 'add_upload_box'));
         add_action('save_post', array($this, 'upload_on_save'), 10, 2);
         add_action('post_edit_form_tag', array($this, 'update_edit_form'));
         add_action('admin_notices', array($this, 'render_admin_error'));
@@ -84,14 +84,11 @@ class WRAI_App
         register_post_type('react_app', $args);
     }
     // register_upload_box creates a new box in the single-edit-view.
-    public function register_upload_box()
-    {
-        add_meta_box('ras-upload-box', __('Upload', 'wp-react-app-importer'), array($this, 'add_upload_box'), 'react_app');
-    }
-    // add_upload_box includes the HTML of the upload.view.php
     public function add_upload_box()
     {
-        include WRAIPATH.'includes/views/upload.view.php';
+        add_meta_box('ras-upload-box', __('Upload', 'wp-react-app-importer'), function () {
+            include WRAIPATH.'includes/views/upload.view.php';
+        }, 'react_app');
     }
 
     // upload_on_save hooks into the save_post action and uploads and extracts the zip file.
@@ -103,10 +100,10 @@ class WRAI_App
         try {
             if (!wp_verify_nonce($_POST['react_uploader_nonce'], 'upload_react_app')) {
                 throw new \Exception(__('There was an nonce error uploading your File.', 'wp-react-app-importer'));
-            }
+            } // Validating the nonce field rendered in upload.view.php
             if (!current_user_can('update_core')) {
                 throw new \Exception(__('You dont have permissions for uploading a file.', 'wp-react-app-importer'));
-            }
+            } // Checking if the user has admin rights.
             $name = $_FILES['react_app_uploader']['name'];
             if (!empty($name)) {
                 $extension = end(explode(".", $name));
@@ -114,13 +111,13 @@ class WRAI_App
                     throw new \Exception(__('You did not upload a valid ZIP File.', 'wp-react-app-importer'));
                 } // Validating the filetype
                 $appName = 'app-'.$post_id; // the name used to store in meta
-                $tmpName = $_FILES['react_app_uploader']['tmp_name']; // the file
-                $folderName = WRAIUPLOADPATH.$appName.'/'; // the folder used to store the data
+                $tmpName = $_FILES['react_app_uploader']['tmp_name']; // the temporary upload file
+                $folderName = WRAIUPLOADPATH.$appName; // the folder used to store the data
                 WP_Filesystem(); // Loading file system to delete old folder and unzip new.
                 global $wp_filesystem;
                 $oldBuild = get_post_meta($post_id, 'react_app_name', true);
                 if (file_exists(WRAIUPLOADPATH.$oldBuild)) {
-                    $wp_filesystem->delete(WRAIUPLOADPATH.$oldBuild.'/', true);
+                    $wp_filesystem->delete(WRAIUPLOADPATH.$oldBuild, true);
                 } // Deleting the old build files.
                 $zip = unzip_file($tmpName, $folderName);
                 if ($zip === true) {
@@ -138,15 +135,16 @@ class WRAI_App
 
     public function render_admin_error()
     {
-        // show error if the transient exists
-        if (isset($_GET['post'])) {
-            if (get_transient('react_app_errors_'.$_GET['post'])) {?>
+        $id = $_GET['post'];
+        if (isset($id)) {
+            $name = 'react_app_errors_'.$id;
+            if (get_transient($name)) {?>
              <div class="error">
-                <p><?php echo get_transient('react_app_errors_'.$_GET['post']); ?></p>
+                <p><?php echo get_transient($name); ?></p>
             </div>
             <?php
             // show error once, delete it afterwards
-            delete_transient('react_app_errors_'.$id);
+            delete_transient($name);
         }
         }
     }
@@ -163,6 +161,7 @@ class WRAI_App
     public function add_admin_column($columns)
     {
         $columns = array(
+            'cb' => $columns['cb'],
             'title' => __('Title'),
             'shortcode' => __('Shortcode', 'wp-react-app-importer'),
             'date' => __('Date')
@@ -173,7 +172,7 @@ class WRAI_App
     public function fill_admin_column($column, $post_id)
     {
         if ($column === "shortcode") {
-            echo '<input type="text" disabled style="color:#666"  value="[React-App id=&quot;'.$post_id.'&quot;]"/>';
+            echo '<input type="text" disabled style="color:#666;width:300px;"  value="[React-App id=&quot;'.$post_id.'&quot;]"/>';
         }
     }
 }
