@@ -1,6 +1,6 @@
 # WP React App Importer
 
-Publish Apps created with "Create React App" on your Wordpress Site using plugins.
+Publish Apps created with "Create React App" on your WordPress Site using shortcodes.
 
 ## Guide
 
