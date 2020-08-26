@@ -29,14 +29,18 @@ class WRAI_Shortcode
     {
         if (is_admin()) {
             return;
-        }
+        } // don't do anything in admin
         $name = get_post_meta($id, 'react_app_name', true);
         if (!$name) {
             return;
+        } // if no app is stored, do nothing
+        $path = WRAIUPLOADPATH.$name;
+        $url = WRAIUPLOADURL.$name;
+        $html = $path.'/index.html';
+        if (!file_exists($html)) {
+            return;
         }
-        $path = WRAIUPLOADPATH.$name.'/';
-        $url = WRAIUPLOADURL.$name.'/';
-        $html = file_get_contents($path.'index.html');
+        $html = file_get_contents($html);
         libxml_use_internal_errors(true);
         $parsed =  DOMDocument::loadHTML($html); // Using DOMDocument to get all HTML Tags
         libxml_use_internal_errors(false);
@@ -45,7 +49,7 @@ class WRAI_Shortcode
         $links = $parsed->getElementsByTagName('link'); // getting all links (for styling)
         // Starting output buffer
         ob_start();
-        $i=0;
+      
         // going througha all divs and echo those with id.
         if ($divs) {
             foreach ($divs as $div) {
@@ -57,6 +61,7 @@ class WRAI_Shortcode
         }
         // Looping through scripts
         if ($scripts) {
+            $i=0;  // Variable vor enumarting script names
             foreach ($scripts as $script) {
                 $src = $script->getAttribute('src');
                 $content = $script->textContent;
@@ -69,14 +74,14 @@ class WRAI_Shortcode
                 // if script has content, echo
                 if ($content) {
                     $content = str_replace("'/'", "'".$url."/'", $content);
-                    $content = str_replace('"/"', '"'.$url.'/"', $content);
+                    $content = str_replace('"/"', '"'.$url.'/"', $content); // Replacing the app path in the inline script.
                     $content = str_replace(site_url(), "", $content);
                     echo '<script>'.$content.'</script>';
                 }
             }
         }
         if ($links && $stylesheet !== "off") {
-            $s = 0;
+            $s = 0; // Variable vor enumarting style names
             foreach ($links as $link) {
                 // if link has rel, enque, footer position is potentially to be optimized.
                 if ($link->getAttribute('rel') === "stylesheet") {
@@ -91,7 +96,6 @@ class WRAI_Shortcode
                 }
             }
         }
-
         return ob_get_clean();
     }
 }
