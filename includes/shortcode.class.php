@@ -1,6 +1,8 @@
 <?php
 
-class RAS_Shortcode
+// WRAI_Shortcode handles the display of data within the site.
+
+class WRAI_Shortcode
 {
     public function __construct()
     {
@@ -14,12 +16,10 @@ class RAS_Shortcode
             'id' => null,
             'stylesheet' => "on"
         ), $atts);
-
         // if the post or id does not exist, return nothing
         if (!$a['id'] || !get_post($a['id'])) {
             return;
         }
-
         // render shortcode
         return $this->render_app($a['id'], $a['stylesheet']);
     }
@@ -27,15 +27,15 @@ class RAS_Shortcode
     // render_app handles to output of the shortcode.
     private function render_app($id, $stylesheet)
     {
-        if(is_admin()) {
+        if (is_admin()) {
             return;
         }
         $name = get_post_meta($id, 'react_app_name', true);
         if (!$name) {
             return;
         }
-        $path = WP_CONTENT_DIR.'/uploads/reactapps/'.$name.'/';
-        $url = WP_CONTENT_URL.'/uploads/reactapps/'.$name.'/';
+        $path = WRAIUPLOADPATH.$name.'/';
+        $url = WRAIUPLOADURL.$name.'/';
         $html = file_get_contents($path.'index.html');
         libxml_use_internal_errors(true);
         $parsed =  DOMDocument::loadHTML($html); // Using DOMDocument to get all HTML Tags
@@ -95,4 +95,4 @@ class RAS_Shortcode
         return ob_get_clean();
     }
 }
-new RAS_Shortcode();
+new WRAI_Shortcode();
