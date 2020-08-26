@@ -97,13 +97,9 @@ class WRAI_App
     // upload_on_save hooks into the save_post action and uploads and extracts the zip file.
     public function upload_on_save($post_id, $post)
     {
-        if ($post->post_status !== 'publish' || $post->post_type !== 'react_app') {
+        if ($post->post_status !== 'publish' || $post->post_type !== 'react_app' || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
             return $post_id;
         }
-        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-            return $post_id;
-        }
-
         try {
             if (!wp_verify_nonce($_POST['react_uploader_nonce'], 'upload_react_app')) {
                 throw new \Exception(__('There was an nonce error uploading your File.', 'wp-react-app-importer'));
@@ -111,48 +107,28 @@ class WRAI_App
             if (!current_user_can('update_core')) {
                 throw new \Exception(__('You dont have permissions for uploading a file.', 'wp-react-app-importer'));
             }
-            if (!empty($_FILES['react_app_uploader']['name'])) {
-                $supported_types = array('application/zip', 'application/octet-stream', 'application/x-zip-compressed', 'multipart/x-zip');
-                $arr_file_type = wp_check_filetype(basename($_FILES['react_app_uploader']['name']));
-                $uploaded_type = $arr_file_type['type'];
-                if (!in_array($uploaded_type, $supported_types)) {
+            $name = $_FILES['react_app_uploader']['name'];
+            if (!empty($name)) {
+                $extension = end(explode(".", $name));
+                if ($extension !== "zip") {
                     throw new \Exception(__('You did not upload a valid ZIP File.', 'wp-react-app-importer'));
-                }
-                $saveName = 'app-'.$post_id;
-
-                $tmpName = $_FILES['react_app_uploader']['tmp_name'];
-                $folderName = WRAIUPLOADPATH.$saveName.'/';
-                $pathToZip = $folderName.'build.zip';
-                if (!file_exists(WRAIUPLOADPATH)) {
-                    mkdir(WRAIUPLOADPATH, 0775);
-                } // Create upload folder if does not exist.
+                } // Validating the filetype
+                $appName = 'app-'.$post_id; // the name used to store in meta
+                $tmpName = $_FILES['react_app_uploader']['tmp_name']; // the file
+                $folderName = WRAIUPLOADPATH.$appName.'/'; // the folder used to store the data
+                WP_Filesystem(); // Loading file system to delete old folder and unzip new.
+                global $wp_filesystem;
                 $oldBuild = get_post_meta($post_id, 'react_app_name', true);
-                if ($oldBuild) {
-                    $this->delete_app_files(WRAIUPLOADPATH.$oldBuild.'/');
+                if (file_exists(WRAIUPLOADPATH.$oldBuild)) {
+                    $wp_filesystem->delete(WRAIUPLOADPATH.$oldBuild.'/', true);
+                } // Deleting the old build files.
+                $zip = unzip_file($tmpName, $folderName);
+                if ($zip === true) {
+                    add_post_meta($post_id, 'react_app_name', $appName); // Creating post meta with path
+                    update_post_meta($post_id, 'react_app_name', $appName); //Updating post meta with path
+                } else {
+                    throw new \Exception(__('Your archive could not be unzipped.', 'wp-react-app-importer'));
                 }
-                if (!file_exists($folderName)) {
-                    mkdir($folderName, 0775);
-                } // Create new folder if doesn't exist.
-                $move = move_uploaded_file($tmpName, $pathToZip); // Move temp files to folder
-                if (!$move) {
-                    throw new \Exception(__('There was an error uploading your app.', 'wp-react-app-importer'));
-                }
-                $zip = new ZipArchive();
-                $bOK = $zip->open($pathToZip);
-                if (!$zip->locateName('index.html')) {
-                    throw new \Exception(__('The Archive you have uploaded does not seem to be a valid Create React App archive.', 'wp-react-app-importer'));
-                } // Checking if archive has an index.html
-                if ($bOK !== true) {
-                    throw new \Exception(__('Could not extract your zip file.', 'wp-react-app-importer'));
-                } // Checking if archive can be extracted.
-                $bOK = $zip->extractTo($folderName);
-                if ($bOK !== true) {
-                    throw new \Exception(__('Could not extract your zip file.', 'wp-react-app-importer'));
-                } // Checking if archive can be extracted.
-                $zip->close();
-                add_post_meta($post_id, 'react_app_name', $saveName); // Creating post meta with path
-                update_post_meta($post_id, 'react_app_name', $saveName); //Updating post meta with path
-                unlink($pathToZip); // Deleting the ZIP File
             }
         } catch (Exception $e) {
             set_transient('react_app_errors_'.$post_id, $e->getMessage(), 10);
@@ -180,25 +156,6 @@ class WRAI_App
     {
         if ($post->post_type === "react_app") {
             echo ' enctype="multipart/form-data"';
-        }
-    }
-
-    // Deletes all files in this speficic directory.
-    private function delete_app_files($dir)
-    {
-        if (is_dir($dir) && strpos($dir, 'reactapps')) {
-            $objects = scandir($dir);
-            foreach ($objects as $object) {
-                if ($object != "." && $object != "..") {
-                    if (filetype($dir."/".$object) == "dir") {
-                        $this->delete_app_files($dir."/".$object);
-                    } else {
-                        unlink($dir."/".$object);
-                    }
-                }
-            }
-            reset($objects);
-            rmdir($dir);
         }
     }
 
