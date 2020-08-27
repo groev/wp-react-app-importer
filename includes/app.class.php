@@ -86,7 +86,7 @@ class WRAI_App
     // register_upload_box creates a new box in the single-edit-view.
     public function add_upload_box()
     {
-        add_meta_box('ras-upload-box', __('Upload', 'wp-react-app-importer'), function () {
+        add_meta_box('ras-upload-box', __('Upload your React App', 'wp-react-app-importer'), function () {
             include WRAIPATH.'includes/views/upload.view.php';
         }, 'react_app');
     }
