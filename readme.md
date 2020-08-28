@@ -4,7 +4,8 @@ Publish Apps created with "Create React App" on your WordPress Site using shortc
 
 ## Examples 
 Simple: https://testend.westhofen.me/sample-page/
-Advanced (Routing & Fetching) https://testend.westhofen.me/advanced-example/
+
+Advanced (Routing & Fetching): https://testend.westhofen.me/advanced-example/
 
 ## Guide
 
