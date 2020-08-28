@@ -13,7 +13,10 @@ Advanced (Routing & Fetching): https://testend.westhofen.me/advanced-example/
 2. Install the plugin in WordPress using the uploader
 3. Go to React Apps and create a new React App
 4. Upload the ZIP file of your Create-React-App build and save the post.
-5. Use the shortcode [React-App id="POSTID"] anywhere you like.
+5. Use the shortcode  anywhere you like.
+```
+[React-App id="POSTID"]
+```
 
 ## Shortcode Params
 
