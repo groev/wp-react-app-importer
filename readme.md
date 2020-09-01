@@ -7,6 +7,8 @@ Simple: https://testend.westhofen.me/sample-page/
 
 Advanced (Routing & Fetching): https://testend.westhofen.me/advanced-example/
 
+Todo List with Firebase Auth: https://testend.westhofen.me/todo-example/
+
 ## Guide
 
 1. Download the release from this repository
